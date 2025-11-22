@@ -31,7 +31,7 @@ createAppKit({
   },
 });
 
-export default function Home() {
+function SigningInterface() {
   const { open } = useAppKit();
   const { address, isConnected } = useAppKitAccount();
   const { walletProvider } = useAppKitProvider('eip155');
@@ -65,7 +65,7 @@ export default function Home() {
 
     setStatus("signing");
     try {
-      const provider = new BrowserProvider(walletProvider);
+      const provider = new BrowserProvider(walletProvider as any);
       const signer = await provider.getSigner();
 
       addLog("Signer ready: " + address);
@@ -132,7 +132,7 @@ export default function Home() {
                   onClick={handleSign}
                   disabled={status === "signing" || status === "success"}
                   className={`w-full py-3 rounded-lg font-bold ${status === "success" ? "bg-green-600" :
-                      status === "signing" ? "bg-yellow-600" : "bg-blue-600 hover:bg-blue-700"
+                    status === "signing" ? "bg-yellow-600" : "bg-blue-600 hover:bg-blue-700"
                     }`}
                 >
                   {status === "signing" ? "Signing..." :
@@ -153,4 +153,22 @@ export default function Home() {
       </div>
     </main>
   );
+}
+
+export default function Page() {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center p-24 bg-gray-900 text-white">
+        <div className="text-xl">Loading...</div>
+      </main>
+    );
+  }
+
+  return <SigningInterface />;
 }
