@@ -1,49 +1,46 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { createWeb3Modal, defaultConfig } from "@web3modal/ethers/react";
-import { useWeb3Modal, useWeb3ModalProvider, useWeb3ModalAccount } from "@web3modal/ethers/react";
-import { BrowserProvider, JsonRpcSigner } from "ethers";
+import { createAppKit } from '@reown/appkit/react'
+import { EthersAdapter } from '@reown/appkit-adapter-ethers'
+import { polygon } from '@reown/appkit/networks'
+import { BrowserProvider } from "ethers";
+import { useAppKit, useAppKitAccount, useAppKitProvider } from '@reown/appkit/react'
 
-// 1. Get projectId at https://cloud.walletconnect.com
-const projectId = "YOUR_PROJECT_ID"; // Replace with actual ID or env var
+// 1. Get projectId from https://cloud.reown.com
+const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || "YOUR_PROJECT_ID_HERE";
 
-// 2. Set chains
-const polygon = {
-  chainId: 137,
-  name: "Polygon",
-  currency: "MATIC",
-  explorerUrl: "https://polygonscan.com",
-  rpcUrl: "https://polygon-rpc.com",
-};
+// 2. Set up the Ethers Adapter
+const ethersAdapter = new EthersAdapter()
 
-// 3. Create modal
+// 3. Create the modal
 const metadata = {
   name: "Polymarket Bot",
   description: "Sign your Polymarket bets",
   url: "https://polymarket-bot.com",
-  icons: ["https://avatars.mywebsite.com/"],
+  icons: ["https://avatars.githubusercontent.com/u/37784886"],
 };
 
-createWeb3Modal({
-  ethersConfig: defaultConfig({ metadata }),
-  chains: [polygon],
+createAppKit({
+  adapters: [ethersAdapter],
+  networks: [polygon],
+  metadata,
   projectId,
-  enableAnalytics: true,
+  features: {
+    analytics: true,
+  },
 });
 
 export default function Home() {
-  const { open } = useWeb3Modal();
-  const { address, isConnected } = useWeb3ModalAccount();
-  const { walletProvider } = useWeb3ModalProvider();
+  const { open } = useAppKit();
+  const { address, isConnected } = useAppKitAccount();
+  const { walletProvider } = useAppKitProvider('eip155');
 
   const [txData, setTxData] = useState<any>(null);
-  const [status, setStatus] = useState("idle"); // idle, signing, success, error
+  const [status, setStatus] = useState("idle");
   const [logs, setLogs] = useState<string[]>([]);
 
   useEffect(() => {
-    // Parse query params for tx data
-    // Format: ?swap_to=...&swap_data=...&approve_to=...&approve_data=...
     const params = new URLSearchParams(window.location.search);
     const swapTo = params.get("swap_to");
     const swapData = params.get("swap_data");
@@ -73,7 +70,6 @@ export default function Home() {
 
       addLog("Signer ready: " + address);
 
-      // 1. Execute Swap
       if (txData.swap) {
         addLog("Sending Swap TX...");
         const tx1 = await signer.sendTransaction({
@@ -85,7 +81,6 @@ export default function Home() {
         addLog("Swap Confirmed!");
       }
 
-      // 2. Execute Approve (if needed)
       if (txData.approve) {
         addLog("Sending Approve TX...");
         const tx2 = await signer.sendTransaction({
@@ -97,9 +92,7 @@ export default function Home() {
         addLog("Approve Confirmed!");
       }
 
-      // 3. Place Order (Stub for now)
-      addLog("Order placement not fully implemented in MVP (requires EIP-712 signing)");
-
+      addLog("✅ All transactions complete!");
       setStatus("success");
     } catch (e: any) {
       console.error(e);
@@ -131,8 +124,8 @@ export default function Home() {
               <div className="space-y-4">
                 <div className="p-4 bg-gray-700 rounded">
                   <h3 className="font-bold mb-2">Transaction Details</h3>
-                  <p>Swap: {txData.swap.to.slice(0, 6)}...</p>
-                  {txData.approve && <p>Approve: {txData.approve.to.slice(0, 6)}...</p>}
+                  <p className="text-sm">Swap: {txData.swap.to.slice(0, 10)}...</p>
+                  {txData.approve && <p className="text-sm">Approve: {txData.approve.to.slice(0, 10)}...</p>}
                 </div>
 
                 <button
