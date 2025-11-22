@@ -3,6 +3,12 @@
 import { useState, useEffect } from "react";
 import { BrowserProvider } from "ethers";
 
+declare global {
+  interface Window {
+    ethereum?: any;
+  }
+}
+
 export default function Page() {
   const [mounted, setMounted] = useState(false);
   const [address, setAddress] = useState<string>("");
@@ -129,7 +135,7 @@ export default function Page() {
                   onClick={handleSign}
                   disabled={status === "signing" || status === "success"}
                   className={`w-full py-3 rounded-lg font-bold ${status === "success" ? "bg-green-600" :
-                      status === "signing" ? "bg-yellow-600" : "bg-blue-600 hover:bg-blue-700"
+                    status === "signing" ? "bg-yellow-600" : "bg-blue-600 hover:bg-blue-700"
                     }`}
                 >
                   {status === "signing" ? "Signing..." :
