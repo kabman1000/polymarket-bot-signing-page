@@ -52,6 +52,27 @@ export default function Page() {
     }
   };
 
+  const handleDemoSign = async () => {
+    setStatus("signing");
+    addLog("🔵 DEMO MODE: Simulating transactions...");
+
+    await new Promise(r => setTimeout(r, 1000));
+    addLog("📝 Signing Swap Transaction...");
+    await new Promise(r => setTimeout(r, 1500));
+    addLog("✅ Swap Transaction Confirmed! (Simulated)");
+
+    if (txData.approve) {
+      await new Promise(r => setTimeout(r, 1000));
+      addLog("📝 Signing Approve Transaction...");
+      await new Promise(r => setTimeout(r, 1500));
+      addLog("✅ Approve Transaction Confirmed! (Simulated)");
+    }
+
+    await new Promise(r => setTimeout(r, 1000));
+    addLog("🚀 Order Placed Successfully! (Simulated)");
+    setStatus("success");
+  };
+
   const handleSign = async () => {
     if (!address) {
       addLog("Please connect wallet first");
@@ -70,6 +91,7 @@ export default function Page() {
         const tx1 = await signer.sendTransaction({
           to: txData.swap.to,
           data: txData.swap.data,
+          value: txData.swap.value || "0"
         });
         addLog("Swap TX sent: " + tx1.hash);
         await tx1.wait();
@@ -140,6 +162,13 @@ export default function Page() {
                 >
                   {status === "signing" ? "Signing..." :
                     status === "success" ? "Success!" : "Sign & Send"}
+                </button>
+
+                <button
+                  onClick={handleDemoSign}
+                  className="w-full py-2 text-sm text-gray-400 hover:text-white underline"
+                >
+                  Demo Mode (Simulate Success)
                 </button>
               </div>
             ) : (
