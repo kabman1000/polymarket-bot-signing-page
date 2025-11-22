@@ -1,46 +1,19 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { createAppKit } from '@reown/appkit/react'
-import { EthersAdapter } from '@reown/appkit-adapter-ethers'
-import { polygon } from '@reown/appkit/networks'
 import { BrowserProvider } from "ethers";
-import { useAppKit, useAppKitAccount, useAppKitProvider } from '@reown/appkit/react'
 
-// 1. Get projectId from https://cloud.reown.com
-const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || "YOUR_PROJECT_ID_HERE";
-
-// 2. Set up the Ethers Adapter
-const ethersAdapter = new EthersAdapter()
-
-// 3. Create the modal
-const metadata = {
-  name: "Polymarket Bot",
-  description: "Sign your Polymarket bets",
-  url: "https://polymarket-bot.com",
-  icons: ["https://avatars.githubusercontent.com/u/37784886"],
-};
-
-createAppKit({
-  adapters: [ethersAdapter],
-  networks: [polygon],
-  metadata,
-  projectId,
-  features: {
-    analytics: true,
-  },
-});
-
-function SigningInterface() {
-  const { open } = useAppKit();
-  const { address, isConnected } = useAppKitAccount();
-  const { walletProvider } = useAppKitProvider('eip155');
-
+export default function Page() {
+  const [mounted, setMounted] = useState(false);
+  const [address, setAddress] = useState<string>("");
   const [txData, setTxData] = useState<any>(null);
   const [status, setStatus] = useState("idle");
   const [logs, setLogs] = useState<string[]>([]);
 
   useEffect(() => {
+    setMounted(true);
+
+    // Parse URL params
     const params = new URLSearchParams(window.location.search);
     const swapTo = params.get("swap_to");
     const swapData = params.get("swap_data");
@@ -57,15 +30,31 @@ function SigningInterface() {
 
   const addLog = (msg: string) => setLogs((prev) => [...prev, msg]);
 
+  const connectWallet = async () => {
+    if (typeof window.ethereum === "undefined") {
+      addLog("Please install MetaMask!");
+      return;
+    }
+
+    try {
+      const provider = new BrowserProvider(window.ethereum);
+      const accounts = await provider.send("eth_requestAccounts", []);
+      setAddress(accounts[0]);
+      addLog("Connected: " + accounts[0]);
+    } catch (e: any) {
+      addLog("Error: " + e.message);
+    }
+  };
+
   const handleSign = async () => {
-    if (!isConnected || !walletProvider) {
+    if (!address) {
       addLog("Please connect wallet first");
       return;
     }
 
     setStatus("signing");
     try {
-      const provider = new BrowserProvider(walletProvider as any);
+      const provider = new BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
 
       addLog("Signer ready: " + address);
@@ -101,23 +90,31 @@ function SigningInterface() {
     }
   };
 
+  if (!mounted) {
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center p-24 bg-gray-900 text-white">
+        <div className="text-xl">Loading...</div>
+      </main>
+    );
+  }
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-24 bg-gray-900 text-white">
       <h1 className="text-4xl font-bold mb-8">Polymarket Bot Signer</h1>
 
       <div className="w-full max-w-md p-6 bg-gray-800 rounded-lg shadow-xl">
-        {!isConnected ? (
+        {!address ? (
           <button
-            onClick={() => open()}
+            onClick={connectWallet}
             className="w-full py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-bold"
           >
-            Connect Wallet
+            Connect MetaMask
           </button>
         ) : (
           <div className="space-y-4">
             <div className="p-4 bg-gray-700 rounded">
               <p className="text-sm text-gray-400">Connected:</p>
-              <p className="font-mono">{address?.slice(0, 6)}...{address?.slice(-4)}</p>
+              <p className="font-mono text-sm">{address.slice(0, 6)}...{address.slice(-4)}</p>
             </div>
 
             {txData ? (
@@ -132,7 +129,7 @@ function SigningInterface() {
                   onClick={handleSign}
                   disabled={status === "signing" || status === "success"}
                   className={`w-full py-3 rounded-lg font-bold ${status === "success" ? "bg-green-600" :
-                    status === "signing" ? "bg-yellow-600" : "bg-blue-600 hover:bg-blue-700"
+                      status === "signing" ? "bg-yellow-600" : "bg-blue-600 hover:bg-blue-700"
                     }`}
                 >
                   {status === "signing" ? "Signing..." :
@@ -153,22 +150,4 @@ function SigningInterface() {
       </div>
     </main>
   );
-}
-
-export default function Page() {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) {
-    return (
-      <main className="flex min-h-screen flex-col items-center justify-center p-24 bg-gray-900 text-white">
-        <div className="text-xl">Loading...</div>
-      </main>
-    );
-  }
-
-  return <SigningInterface />;
 }
