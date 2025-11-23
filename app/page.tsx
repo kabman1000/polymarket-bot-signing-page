@@ -126,6 +126,76 @@ export default function Page() {
     );
   }
 
+  const handleTestnetSign = async () => {
+    if (!address) {
+      addLog("Please connect wallet first");
+      return;
+    }
+
+    setStatus("signing");
+    addLog("🔵 Switching to Amoy Testnet...");
+
+    try {
+      const provider = new BrowserProvider(window.ethereum);
+
+      // Switch to Amoy (Chain ID 80002)
+      try {
+        await window.ethereum.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: '0x13882' }], // 80002 in hex
+        });
+      } catch (switchError: any) {
+        // This error code indicates that the chain has not been added to MetaMask.
+        if (switchError.code === 4902) {
+          await window.ethereum.request({
+            method: 'wallet_addEthereumChain',
+            params: [{
+              chainId: '0x13882',
+              chainName: 'Polygon Amoy Testnet',
+              nativeCurrency: { name: 'MATIC', symbol: 'MATIC', decimals: 18 },
+              rpcUrls: ['https://rpc-amoy.polygon.technology'],
+              blockExplorerUrls: ['https://www.oklink.com/amoy'],
+            }],
+          });
+        } else {
+          throw switchError;
+        }
+      }
+
+      const signer = await provider.getSigner();
+      addLog("✅ Network Switched. Sending Dummy TX...");
+
+      // Send 0 MATIC to self to simulate a tx
+      const tx = await signer.sendTransaction({
+        to: address,
+        value: "0",
+        data: "0x" // Empty data
+      });
+
+      addLog("📝 Transaction Sent! Hash: " + tx.hash.slice(0, 10) + "...");
+      await tx.wait();
+      addLog("✅ Transaction Confirmed on Testnet!");
+
+      // Simulate second tx if needed
+      if (txData.approve) {
+        addLog("📝 Sending 2nd Transaction (Simulation)...");
+        const tx2 = await signer.sendTransaction({
+          to: address,
+          value: "0"
+        });
+        await tx2.wait();
+        addLog("✅ All Transactions Confirmed!");
+      }
+
+      setStatus("success");
+
+    } catch (e: any) {
+      console.error(e);
+      addLog("Error: " + e.message);
+      setStatus("error");
+    }
+  };
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-24 bg-gray-900 text-white">
       <h1 className="text-4xl font-bold mb-8">Polymarket Bot Signer</h1>
@@ -161,15 +231,24 @@ export default function Page() {
                     }`}
                 >
                   {status === "signing" ? "Signing..." :
-                    status === "success" ? "Success!" : "Sign & Send"}
+                    status === "success" ? "Success!" : "Sign & Send (Mainnet)"}
                 </button>
 
-                <button
-                  onClick={handleDemoSign}
-                  className="w-full py-2 text-sm text-gray-400 hover:text-white underline"
-                >
-                  Demo Mode (Simulate Success)
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleTestnetSign}
+                    className="flex-1 py-2 text-sm bg-purple-600 hover:bg-purple-700 rounded text-white"
+                  >
+                    Testnet Mode (Real TX)
+                  </button>
+
+                  <button
+                    onClick={handleDemoSign}
+                    className="flex-1 py-2 text-sm bg-gray-600 hover:bg-gray-700 rounded text-white"
+                  >
+                    Demo Mode (Fake)
+                  </button>
+                </div>
               </div>
             ) : (
               <p className="text-yellow-400">No transaction data found in URL</p>
