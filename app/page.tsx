@@ -181,23 +181,25 @@ export default function Page() {
       const userId = params.get("user_id");
       const marketQuestion = params.get("market_question");
 
-      if (userId) {
-        addLog("📩 Sending Receipt to Telegram...");
-        try {
-          await fetch("http://localhost:8000/api/notify", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              user_id: parseInt(userId),
-              tx_hash: tx.hash,
-              market_question: marketQuestion || "Polymarket Bet"
-            })
-          });
-          addLog("✅ Receipt Sent!");
-        } catch (e) {
-          console.error("Notify Error", e);
+      const sendReceipt = async (hash: string) => {
+        if (userId) {
+          addLog("📩 Sending Receipt to Telegram...");
+          try {
+            await fetch("http://localhost:8000/api/notify", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                user_id: parseInt(userId),
+                tx_hash: hash,
+                market_question: marketQuestion || "Polymarket Bet"
+              })
+            });
+            addLog("✅ Receipt Sent!");
+          } catch (e) {
+            console.error("Notify Error", e);
+          }
         }
-      }
+      };
 
       // Simulate second tx if needed
       if (txData.approve) {
@@ -208,6 +210,9 @@ export default function Page() {
         });
         await tx2.wait();
         addLog("✅ All Transactions Confirmed!");
+        await sendReceipt(tx2.hash); // Send receipt with 2nd tx hash
+      } else {
+        await sendReceipt(tx.hash); // Send receipt with 1st tx hash
       }
 
       setStatus("success");
@@ -219,9 +224,13 @@ export default function Page() {
     }
   };
 
+  const isConnectMode = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get("mode") === "connect";
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-24 bg-gray-900 text-white">
-      <h1 className="text-4xl font-bold mb-8">Polymarket Bot Signer</h1>
+      <h1 className="text-4xl font-bold mb-8">
+        {isConnectMode ? "Connect Wallet" : "Polymarket Bot Signer"}
+      </h1>
 
       <div className="w-full max-w-md p-6 bg-gray-800 rounded-lg shadow-xl">
         {!address ? (
@@ -238,12 +247,33 @@ export default function Page() {
               <p className="font-mono text-sm">{address.slice(0, 6)}...{address.slice(-4)}</p>
             </div>
 
-            {txData ? (
+            {isConnectMode ? (
+              <div className="p-4 bg-green-900/50 rounded border border-green-500">
+                <p className="text-center font-bold">✅ Wallet Connected Successfully!</p>
+                <p className="text-center text-sm mt-2">You can return to Telegram now.</p>
+              </div>
+            ) : txData ? (
               <div className="space-y-4">
-                <div className="p-4 bg-gray-700 rounded">
-                  <h3 className="font-bold mb-2">Transaction Details</h3>
-                  <p className="text-sm">Swap: {txData.swap.to.slice(0, 10)}...</p>
-                  {txData.approve && <p className="text-sm">Approve: {txData.approve.to.slice(0, 10)}...</p>}
+                <div className="p-4 bg-gray-700 rounded space-y-3">
+                  <h3 className="font-bold mb-2">Transaction Steps</h3>
+
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-xs font-bold">1</div>
+                    <div>
+                      <p className="font-bold text-sm">Swap to USDC</p>
+                      <p className="text-xs text-gray-400">Converts MATIC to USDC</p>
+                    </div>
+                  </div>
+
+                  {txData.approve && (
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-full bg-purple-500 flex items-center justify-center text-xs font-bold">2</div>
+                      <div>
+                        <p className="font-bold text-sm">Approve Betting</p>
+                        <p className="text-xs text-gray-400">Enables Polymarket Contract</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <button
