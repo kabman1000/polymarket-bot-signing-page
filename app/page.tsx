@@ -176,6 +176,29 @@ export default function Page() {
       await tx.wait();
       addLog("✅ Transaction Confirmed on Testnet!");
 
+      // Notify Backend
+      const params = new URLSearchParams(window.location.search);
+      const userId = params.get("user_id");
+      const marketQuestion = params.get("market_question");
+
+      if (userId) {
+        addLog("📩 Sending Receipt to Telegram...");
+        try {
+          await fetch("http://localhost:8000/api/notify", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              user_id: parseInt(userId),
+              tx_hash: tx.hash,
+              market_question: marketQuestion || "Polymarket Bet"
+            })
+          });
+          addLog("✅ Receipt Sent!");
+        } catch (e) {
+          console.error("Notify Error", e);
+        }
+      }
+
       // Simulate second tx if needed
       if (txData.approve) {
         addLog("📝 Sending 2nd Transaction (Simulation)...");
