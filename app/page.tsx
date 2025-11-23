@@ -36,6 +36,43 @@ export default function Page() {
 
   const addLog = (msg: string) => setLogs((prev) => [...prev, msg]);
 
+  const handleConnectUser = async (addr: string) => {
+    const params = new URLSearchParams(window.location.search);
+    const mode = params.get("mode");
+    const userId = params.get("user_id");
+
+    if (mode === "connect" && userId) {
+      addLog("🔗 Linking wallet to Telegram...");
+      addLog(`User ID: ${userId}`);
+      addLog(`Address: ${addr}`);
+
+      try {
+        const response = await fetch("http://localhost:8000/api/connect-user", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            user_id: parseInt(userId),
+            address: addr
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        addLog("✅ Wallet Linked! Response: " + JSON.stringify(data));
+        addLog("You can close this page and return to Telegram.");
+        setStatus("success");
+      } catch (e: any) {
+        console.error("Connect Error", e);
+        addLog("❌ Failed to link wallet: " + e.message);
+        addLog("⚠️ Make sure the backend is running at http://localhost:8000");
+        setStatus("error");
+      }
+    }
+  };
+
   const connectWallet = async () => {
     if (typeof window.ethereum === "undefined") {
       addLog("Please install MetaMask!");
@@ -47,6 +84,10 @@ export default function Page() {
       const accounts = await provider.send("eth_requestAccounts", []);
       setAddress(accounts[0]);
       addLog("Connected: " + accounts[0]);
+
+      // If in connect mode, link wallet to Telegram
+      await handleConnectUser(accounts[0]);
+
     } catch (e: any) {
       addLog("Error: " + e.message);
     }
